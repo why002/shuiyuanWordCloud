@@ -1,12 +1,12 @@
-from wordcloud import WordCloud
+from emojiWordCloud import EmojiWordCloud
 import jieba
 import re
 
 def getEmoji(word:str)->tuple[str,dict[str,int]]:
-    emojiPattern=re.compile(r':(\w+):')
+    emojiPattern=re.compile(r'(:\w+:)')
     emojis:dict[str,int]={}
     ls=emojiPattern.findall(word)
-    emojiPattern.sub('',word)
+    word=emojiPattern.sub('',word)
     for e in ls:
         if e in emojis:
             emojis[e]+=1
@@ -41,8 +41,8 @@ def generateWordCloud(word:str):
     #print(fenquencies)
 
     stopwords=['的','了','和','是','我','就','都','而且','也','很','在','有','不']
-    wc=WordCloud(width=1080,height=720,font_path="msyh.ttc",background_color="white",stopwords=stopwords,max_font_size=150)
-    wc.generate_from_frequencies(fenquencies)
+    wc=EmojiWordCloud(width=1080,height=720,font_path="msyh.ttc",background_color="white",stopwords=stopwords,max_font_size=150)
+    wc.generateEmojiWordCloud(fenquencies|emojis)
     wc.to_file("wordcloud.png")
 
 if __name__ == "__main__":
