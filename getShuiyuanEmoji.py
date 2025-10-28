@@ -10,7 +10,8 @@ def getEmojiJson():
             "cookie":cookie
         }
         response = requests.get("https://shuiyuan.sjtu.edu.cn/emojis.json",headers=headers)
-        print(response.status_code)
+        if response.status_code !=200:
+            raise Exception(f"请求失败，状态码: {response.status_code}")
         json_data = response.json()
         with open("emojis.json", "w", encoding="utf-8") as f:
             json.dump(json_data, f, ensure_ascii=False, indent=4)
@@ -83,13 +84,13 @@ def downloadEmoji():
     try:
         isTryGetJson=False
         emojis={}
-        while not isTryGetJson:
+        while True:
             try:
                 with open("emojis.json","r",encoding="utf-8") as f:
                     emojis=json.load(f)
                 break
             except FileNotFoundError:
-                if isTryGetJson:
+                if not isTryGetJson:
                     getEmojiJson()
                     isTryGetJson=True
                 else:
