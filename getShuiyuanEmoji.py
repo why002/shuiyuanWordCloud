@@ -68,6 +68,8 @@ async def currentDownloadEmoji(emojis:dict,headers:dict,maxConcurrent:int=8):
                 if url.startswith("//"):
                     url = "https:" + url
                 elif url.startswith("/"):
+                    if name=="shovel":
+                        continue  # 跳过discourse默认shovel表情
                     url = "https://shuiyuan.sjtu.edu.cn" + url
                 
                 # 创建下载任务
