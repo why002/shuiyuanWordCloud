@@ -3,3 +3,5 @@ cookie.txt
 emojis.json
 emoji/
 wordcloud.png
+debug_grey.png
+__pycache__/

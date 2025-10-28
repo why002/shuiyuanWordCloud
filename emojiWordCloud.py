@@ -112,46 +112,41 @@ class EmojiWordCloud(WordCloud):
             result=None
             transposed_font=None
             x,y=0,0
-            if freq == 0:
-                continue
             # select the font size
             rs = self.relative_scaling
             if rs != 0:
                 font_size = int(round((rs * (freq / float(last_freq))
                                        + (1 - float(rs))) * font_size))
             if emojiPattern.match(word):
+                orientation=None
                 newHeight,newWidth=0,0
-                emojiImg=Image.open(f"emoji/{word[1:-1]}.png").convert("RGBA")
-                while True:
-                    if font_size < self.min_font_size:
-                        # font-size went too small
-                        break
+                try:
+                    emojiImg=Image.open(f"emoji/{word[1:-1]}.png").convert("RGBA")
+                except FileNotFoundError:
+                    x,y=0,0
+                else:
+                    while True:
+                        if font_size < self.min_font_size:
+                            # font-size went too small
+                            break
 
-                    newWidth=font_size
-                    wpercent = (newWidth/float(emojiImg.size[0]))
-                    newHeight = int((float(emojiImg.size[1])*float(wpercent)))
-                    emojiImg=emojiImg.resize((int(newWidth),int(newHeight)),Image.LANCZOS)
-                    result = occupancy.sample_position(
-                        newHeight + self.margin,  # 高度 + 边距
-                        newWidth + self.margin,  # 宽度 + 边距  
-                        random_state
-                    )
-                    if result is not None:
-                        break  # 找到位置，退出循环
+                        newWidth=font_size
+                        wpercent = (newWidth/float(emojiImg.size[0]))
+                        newHeight = int((float(emojiImg.size[1])*float(wpercent)))
+                        emojiImg=emojiImg.resize((int(newWidth),int(newHeight)),Image.LANCZOS)
+                        result = occupancy.sample_position(
+                            newHeight + self.margin,  # 高度 + 边距
+                            newWidth + self.margin,  # 宽度 + 边距  
+                            random_state
+                        )
+                        if result is not None:
+                            break  # 找到位置，退出循环
 
-                    font_size -= self.font_step
-                
+                        font_size -= self.font_step
+                    
 
-                x, y = np.array(result) + self.margin // 2
-                positions.append((x, y))
-                orientations.append(None)
-                font_sizes.append(font_size)
-                colors.append(self.color_func(word, font_size=font_size,
-                                            position=(x, y),
-                                            orientation=None,
-                                            random_state=random_state,
-                                            font_path=self.font_path))
-                img_grey.paste(Image.new("L",(newWidth,newHeight),"white"),(y,x),emojiImg)#type:ignore
+                    x, y = np.array(result) + self.margin // 2
+                    img_grey.paste(Image.new("L",(newWidth,newHeight),"white"),(y,x),emojiImg)#type:ignore
             else:
                 if random_state.random() < self.prefer_horizontal:
                     orientation = None
@@ -193,14 +188,14 @@ class EmojiWordCloud(WordCloud):
                 x, y = np.array(result) + self.margin // 2
                 # actually draw the text
                 draw.text((y, x), word, fill="white", font=transposed_font)
-                positions.append((x, y))
-                orientations.append(orientation)
-                font_sizes.append(font_size)
-                colors.append(self.color_func(word, font_size=font_size,
-                                            position=(x, y),
-                                            orientation=orientation,
-                                            random_state=random_state,
-                                            font_path=self.font_path))
+            positions.append((x, y))
+            orientations.append(orientation)
+            font_sizes.append(font_size)
+            colors.append(self.color_func(word, font_size=font_size,
+                                        position=(x, y),
+                                        orientation=orientation,
+                                        random_state=random_state,
+                                        font_path=self.font_path))
                 # recompute integral image
             if self.mask is None:
                 img_array = np.asarray(img_grey)
@@ -213,6 +208,7 @@ class EmojiWordCloud(WordCloud):
 
         self.layout_ = list(zip(frequencies, font_sizes, positions,
                                     orientations, colors))
+        #img_grey.save("debug_grey.png")
         return self
 
     def to_image(self):
