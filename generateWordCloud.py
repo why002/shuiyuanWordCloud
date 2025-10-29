@@ -45,8 +45,14 @@ def generateWordCloud(word:str,username:str=''):
             fenquencies[w]=1
 
     #print(fenquencies)
-
-    wc=EmojiWordCloud(width=1080,height=720,font_path="msyh.ttc",background_color="white",stopwords=stopwords,max_font_size=200,max_words=1000)
+    try:
+        wc=EmojiWordCloud(width=1080,height=720,font_path="msyh.ttc",background_color="white",stopwords=stopwords,max_font_size=200,max_words=1000)
+    except Exception as e:
+        try:
+            wc=EmojiWordCloud(width=1080,height=720,font_path="pingfang SC",background_color="white",stopwords=stopwords,max_font_size=200,max_words=1000)
+        except Exception as e:
+            print("错误: 未找到合适的字体文件")
+            return
     wc.generateEmojiWordCloud(fenquencies|emojis)
     wc.to_file(f"{username}_wordcloud.png")
 
