@@ -5,3 +5,5 @@ emoji/
 wordcloud.png
 debug_grey.png
 __pycache__/
+*.json
+*.png
