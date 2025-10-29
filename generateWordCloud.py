@@ -25,13 +25,19 @@ def generateWordCloud(word:str,username:str=''):
 
     pattern=re.compile(r'[^\w\u4e00-\u9fa5]')
     numberPattern=re.compile(r'[0-9]')
-
+    stopwords:set[str]=set()
+    import os
+    if os.path.exists('stopwords.txt'):
+        with open('stopwords.txt','r',encoding='utf-8') as f:
+            stopwords=set([line.strip() for line in f.readlines()])
     for w in ls:
         if pattern.match(w):
             continue
         if numberPattern.match(w):
             continue
         if w=='_':
+            continue
+        if w in stopwords:
             continue
         if w in fenquencies:
             fenquencies[w]+=1
@@ -40,7 +46,6 @@ def generateWordCloud(word:str,username:str=''):
 
     #print(fenquencies)
 
-    stopwords=['的','了','和','是','我','就','都','而且','也','很','在','有','不']
     wc=EmojiWordCloud(width=1080,height=720,font_path="msyh.ttc",background_color="white",stopwords=stopwords,max_font_size=200,max_words=1000)
     wc.generateEmojiWordCloud(fenquencies|emojis)
     wc.to_file(f"{username}_wordcloud.png")

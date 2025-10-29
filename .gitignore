@@ -9,3 +9,4 @@ __pycache__/
 *.png
 *.txt
 !requirements.txt
+!stopwords.txt
