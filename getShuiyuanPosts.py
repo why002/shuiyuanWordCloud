@@ -97,7 +97,7 @@ async def get_user_replies(username: str, max_pages:int|None = None,
                     page += 1
                     
                     # 添加小延迟避免请求过快
-                    await asyncio.sleep(0.5)
+                    await asyncio.sleep(0.4)
                     
             except Exception as e:
                 print(f"获取第 {page} 页时出错: {e}")

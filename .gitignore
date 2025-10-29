@@ -7,3 +7,4 @@ debug_grey.png
 __pycache__/
 *.json
 *.png
+*.txt
