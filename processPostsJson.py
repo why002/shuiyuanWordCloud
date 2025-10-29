@@ -1,8 +1,8 @@
 import json
 import re
 
-def processRepliesJson(filePath:str):
-    with open(filePath,'r',encoding='utf-8') as f:
+def processRepliesJson(userName:str):
+    with open(f'{userName}_replies.json','r',encoding='utf-8') as f:
         data=json.load(f)
 
     posts:list[str]=[]
@@ -16,9 +16,9 @@ def processRepliesJson(filePath:str):
         if content and content!='':
             posts.append(content+'\n')
 
-    with open('posts.txt','w',encoding='utf-8') as f:
+    with open(f'{userName}_posts.txt','w',encoding='utf-8') as f:
         for post in posts:
             f.write(post)
 
 if __name__ =="__main__":
-    processRepliesJson('example_replies.json')
+    processRepliesJson('example')

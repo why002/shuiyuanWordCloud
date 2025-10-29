@@ -15,10 +15,10 @@ def getEmoji(word:str)->tuple[str,dict[str,int]]:
     return word,emojis
 
 
-def generateWordCloud(word:str):
+def generateWordCloud(word:str,username:str=''):
 
     word,emojis=getEmoji(word)
-    print(emojis)
+    #print(emojis)
 
     ls=jieba.lcut(word)
     fenquencies:dict[str,int]={}
@@ -41,9 +41,9 @@ def generateWordCloud(word:str):
     #print(fenquencies)
 
     stopwords=['的','了','和','是','我','就','都','而且','也','很','在','有','不']
-    wc=EmojiWordCloud(width=1080,height=720,font_path="msyh.ttc",background_color="white",stopwords=stopwords,max_font_size=150)
+    wc=EmojiWordCloud(width=1080,height=720,font_path="msyh.ttc",background_color="white",stopwords=stopwords,max_font_size=200,max_words=1000)
     wc.generateEmojiWordCloud(fenquencies|emojis)
-    wc.to_file("wordcloud.png")
+    wc.to_file(f"{username}_wordcloud.png")
 
 if __name__ == "__main__":
     s=input()
