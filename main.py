@@ -51,4 +51,3 @@ if __name__ == "__main__":
     with open(f"{username}_posts.txt", 'r', encoding='utf-8') as f:
         content=f.read()
     generateWordCloud(content,username)
-    print(f"词云已生成并保存到 {username}_wordcloud.png")

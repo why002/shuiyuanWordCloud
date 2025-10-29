@@ -10,3 +10,4 @@ __pycache__/
 *.txt
 !requirements.txt
 !stopwords.txt
+!mask.png
