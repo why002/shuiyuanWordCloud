@@ -57,33 +57,13 @@ def generateWordCloud(word:str,username:str=''):
 
     import numpy as np
     from PIL import Image
-    import matplotlib.font_manager as fm
-    
-    available_fonts = [f for f in fm.fontManager.ttflist]
-    fonts=None
-    for font in available_fonts:
-        if font.name =="Microsoft YaHei":
-            fonts=font.fname
-            break
-    if fonts is None:
-        for font in available_fonts:
-            if font.name =="PingFang SC":
-                fonts=font.fname
-                break
-    if fonts is None:
-        for font in available_fonts:
-            if font.name =="FangSong":
-                fonts=font.fname
-                break
-    if fonts is None:
-        print("未找到合适字体")
-        return
 
     maskImg=Image.open('mask.png').convert('RGBA')
     background=Image.new('RGBA',maskImg.size,(255,255,255,255))#type:ignore
     resultImg=Image.alpha_composite(background,maskImg).convert('RGB')
     mask=np.array(resultImg)
 
+    fonts='./SourceHanSansHWSC-Regular.otf'
     #print(fenquencies)
     from multiprocessing import Process
     p1=Process(target=generateWc,args=(fonts,fenquencies|emojis,username))
