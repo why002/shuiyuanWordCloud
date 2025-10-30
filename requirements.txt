@@ -5,4 +5,3 @@ numpy
 Pillow
 Requests
 wordcloud
-matplotlib
