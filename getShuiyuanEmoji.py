@@ -1,44 +1,86 @@
-import requests
+import asyncio
+import io
 import json
+import os
+import sys
+from urllib.parse import urlsplit
+
+import aiofiles
+import aiohttp
+import requests
+from PIL import Image
+
+try:
+    import cairosvg
+except ImportError:
+    cairosvg = None
+
+for stream in (sys.stdout, sys.stderr):
+    if hasattr(stream, "reconfigure"):
+        # 部分表情名含 ñ 等 GBK 无法编码的字符，避免 print 抛异常中断下载
+        stream.reconfigure(errors="replace")
+
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36"
+
+
+def readCookie():
+    with open("cookie.txt", "r", encoding="utf-8") as f:
+        return f.read().strip()
+
 
 def getEmojiJson():
-    try:
-        with open("cookie.txt", "r", encoding="utf-8") as f:
-            cookie = f.read().strip()
-        headers={
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36",
-            "cookie":cookie
-        }
-        response = requests.get("https://shuiyuan.sjtu.edu.cn/emojis.json",headers=headers)
-        if response.status_code !=200:
-            raise Exception(f"请求失败，状态码: {response.status_code}")
-        json_data = response.json()
-        with open("emojis.json", "w", encoding="utf-8") as f:
-            json.dump(json_data, f, ensure_ascii=False, indent=4)
-        print("成功获取水源表情包并保存到emojis.json")
-    except Exception as e:
-        print("获取水源表情包失败:",e)
+    headers = {
+        "user-agent": USER_AGENT,
+        "cookie": readCookie()
+    }
+    response = requests.get("https://shuiyuan.sjtu.edu.cn/emojis.json", headers=headers, timeout=30)
+    if response.status_code != 200:
+        raise Exception(f"请求失败，状态码: {response.status_code}")
+    json_data = response.json()
+    with open("emojis.json", "w", encoding="utf-8") as f:
+        json.dump(json_data, f, ensure_ascii=False, indent=4)
+    print("成功获取水源表情包并保存到emojis.json")
 
 
-import asyncio
-import aiohttp
-import aiofiles
-import os
+def emojiExt(url: str) -> str:
+    ext = os.path.splitext(urlsplit(url).path)[1].lower()
+    return ext or ".png"
 
-async def asyncDownloadEmoji(session:aiohttp.ClientSession,url:str,name:str,headers:dict):
+
+def isUsableEmoji(filepath: str) -> bool:
+    if not os.path.exists(filepath):
+        return False
+    with open(filepath, "rb") as f:
+        head = f.read(256)
+    # 旧版本会把 SVG 内容直接存成 .png，PIL 无法打开，需要重新下载转换
+    if head.lstrip().startswith(b"<?xml") or b"<svg" in head:
+        return False
+    return True
+
+
+async def asyncDownloadEmoji(session: aiohttp.ClientSession, url: str, name: str, headers: dict):
+    filepath = os.path.join("emoji", f"{name}.png")
     try:
         async with session.get(url, headers=headers) as response:
             response.raise_for_status()
-        
-            # 确定文件扩展名
-            filepath = os.path.join('emoji', f'{name}.png')
+            content = await response.read()
 
-            content=await response.read()
-            async with aiofiles.open(filepath, 'wb') as f:
-                await f.write(content)
-        
-            print(f"成功下载表情 {name}")
-            
+        ext = emojiExt(url)
+        if ext == ".svg":
+            if cairosvg is None:
+                raise RuntimeError("未安装 cairosvg，无法转换 SVG")
+            content = cairosvg.svg2png(bytestring=content, output_width=256)
+        elif ext != ".png":
+            # webp/jpeg 等格式统一转成 PNG，保证下游 PIL 能直接打开
+            with Image.open(io.BytesIO(content)) as img:
+                buf = io.BytesIO()
+                img.convert("RGBA").save(buf, format="PNG")
+                content = buf.getvalue()
+
+        async with aiofiles.open(filepath, "wb") as f:
+            await f.write(content)
+
+        print(f"成功下载表情 {name}")
     except Exception as e:
         print(f"下载表情 {name} 失败: {e}")
 
@@ -51,7 +93,8 @@ async def currentDownloadEmoji(emojis:dict,headers:dict,maxConcurrent:int=8):
             await asyncDownloadEmoji(session, url, name, headers)
     
     connector = aiohttp.TCPConnector(limit=maxConcurrent)  # 限制TCP连接数
-    async with aiohttp.ClientSession(connector=connector) as session:
+    timeout = aiohttp.ClientTimeout(total=120)
+    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
         tasks = []
         
         for _, emoji_list in emojis.items():
@@ -59,8 +102,8 @@ async def currentDownloadEmoji(emojis:dict,headers:dict,maxConcurrent:int=8):
                 name = emoji["name"]
                 url = emoji["url"]
                 
-                # 检查文件是否已存在
-                if os.path.exists(os.path.join('emoji',f'{name}.png')):
+                # 检查文件是否已存在且可用
+                if isUsableEmoji(os.path.join('emoji',f'{name}.png')):
                     print(f"表情 {name} 已存在，跳过下载")
                     continue
 
@@ -68,8 +111,6 @@ async def currentDownloadEmoji(emojis:dict,headers:dict,maxConcurrent:int=8):
                 if url.startswith("//"):
                     url = "https:" + url
                 elif url.startswith("/"):
-                    if name=="shovel":
-                        continue  # 跳过discourse默认shovel表情
                     url = "https://shuiyuan.sjtu.edu.cn" + url
                 
                 # 创建下载任务
@@ -84,24 +125,19 @@ async def currentDownloadEmoji(emojis:dict,headers:dict,maxConcurrent:int=8):
 
 def downloadEmoji():
     try:
-        isTryGetJson=False
-        emojis={}
-        while True:
-            try:
-                with open("emojis.json","r",encoding="utf-8") as f:
-                    emojis=json.load(f)
-                break
-            except FileNotFoundError:
-                if not isTryGetJson:
-                    getEmojiJson()
-                    isTryGetJson=True
-                else:
-                    raise FileNotFoundError("获取emojis.json失败")
-        
+        # 每次运行先刷新表情列表，避免本地缓存里的旧 URL 失效（如 google）
+        try:
+            getEmojiJson()
+        except Exception as e:
+            print("获取最新表情列表失败，使用本地 emojis.json:", e)
+
+        with open("emojis.json", "r", encoding="utf-8") as f:
+            emojis = json.load(f)
+
         with open("cookie.txt", "r", encoding="utf-8") as f:
             cookie = f.read().strip()
         headers={
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36",
+            "user-agent": USER_AGENT,
             "cookie":cookie
         }
 
